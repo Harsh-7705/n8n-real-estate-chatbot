@@ -1,103 +1,170 @@
-import Image from "next/image";
+'use client';
 
-export default function Home() {
+import { useState, useEffect, useRef } from 'react';
+import { v4 as uuidv4 } from 'uuid';
+
+export default function Chatbot() {
+  const [sessionId, setSessionId] = useState<string | null>(null);
+  const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
+  const [userInfoSubmitted, setUserInfoSubmitted] = useState(false);
+  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Generate or load session ID
+  useEffect(() => {
+    let storedSessionId = localStorage.getItem('sessionId');
+    if (!storedSessionId) {
+      storedSessionId = uuidv4();
+      localStorage.setItem('sessionId', storedSessionId);
+    }
+    setSessionId(storedSessionId);
+  }, []);
+
+  // Scroll to bottom on new message
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatHistory]);
+
+  const handleUserInfoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!userInfo.name || !userInfo.email || !userInfo.phone) {
+      alert('Please fill in all fields.');
+      return;
+    }
+
+    // Send user info to backend
+    const res = await fetch(
+      'https://aiginno-agentic.onrender.com/webhook-test/user',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ...userInfo, session_id: sessionId }),
+      }
+    );
+
+    if (res.ok) {
+      setUserInfoSubmitted(true);
+      alert('Thank you! You can now ask your real estate questions.');
+    } else {
+      alert('Failed to save info. Please try again.');
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!input.trim()) return;
+    const question = input.trim();
+    setChatHistory((prev) => [...prev, { role: 'user', message: question }]);
+    setInput('');
+    setLoading(true);
+
+    const res = await fetch(
+      'https://aiginno-agentic.onrender.com/webhook-test/ai-chat',
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ question, session_id: sessionId }),
+      }
+    );
+
+    if (res.ok) {
+      const data = await res.json();
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'bot', message: data.answer || 'Sorry, I couldn’t understand that.' },
+      ]);
+    } else {
+      setChatHistory((prev) => [
+        ...prev,
+        { role: 'bot', message: '❌ Something went wrong while processing your question.' },
+      ]);
+    }
+    setLoading(false);
+  };
+
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+    <div className="max-w-xl mx-auto p-4 flex flex-col h-screen bg-background text-text-primary">
+      <h1 className="text-3xl font-bold mb-4 text-primary">🏡 Real Estate AI Chatbot</h1>
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
+      {!userInfoSubmitted ? (
+        <form onSubmit={handleUserInfoSubmit} className="space-y-4 bg-surface p-6 rounded-xl shadow-bubble border border-border">
+          <input
+            type="text"
+            placeholder="Your Name"
+            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            value={userInfo.name}
+            onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
+            required
+            aria-label="Your Name"
+          />
+          <input
+            type="email"
+            placeholder="Email"
+            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            value={userInfo.email}
+            onChange={(e) => setUserInfo({ ...userInfo, email: e.target.value })}
+            required
+            aria-label="Email"
+          />
+          <input
+            type="tel"
+            placeholder="Phone Number"
+            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            value={userInfo.phone}
+            onChange={(e) => setUserInfo({ ...userInfo, phone: e.target.value })}
+            required
+            aria-label="Phone Number"
+          />
+          <button
+            type="submit"
+            className="bg-primary text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition disabled:bg-border"
           >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
+            Submit
+          </button>
+        </form>
+      ) : (
+        <>
+          <div className="flex-1 overflow-auto mb-4 border border-border rounded-xl p-4 bg-surface shadow-bubble flex flex-col gap-2">
+            {chatHistory.map((chat, idx) => (
+              <div
+                key={idx}
+                className={`max-w-[75%] px-4 py-3 rounded-bubble shadow-bubble text-base whitespace-pre-line break-words transition
+                  ${chat.role === 'user'
+                    ? 'ml-auto bg-primary text-white rounded-tr-none'
+                    : 'mr-auto bg-background text-text-primary border border-border rounded-tl-none'}
+                `}
+                style={{ alignSelf: chat.role === 'user' ? 'flex-end' : 'flex-start' }}
+                aria-live={chat.role === 'bot' ? 'polite' : undefined}
+              >
+                {chat.message}
+              </div>
+            ))}
+            <div ref={chatEndRef} />
+          </div>
+
+          <form className="flex gap-2" onSubmit={e => { e.preventDefault(); handleSendMessage(); }}>
+            <input
+              type="text"
+              className="flex-grow border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+              placeholder="Ask anything about our real estate listings..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+              disabled={loading}
+              aria-label="Chat input"
             />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
-        </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+            <button
+              type="submit"
+              className="bg-primary text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition disabled:bg-border"
+              disabled={loading}
+              aria-label="Send message"
+            >
+              {loading ? '...' : 'Send'}
+            </button>
+          </form>
+        </>
+      )}
     </div>
   );
 }
