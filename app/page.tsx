@@ -3,16 +3,26 @@
 import { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 
+type ChatMessage = {
+  role: 'user' | 'bot';
+  message: string;
+};
+
+type UserInfo = {
+  name: string;
+  email: string;
+  phone: string;
+};
+
 export default function Chatbot() {
   const [sessionId, setSessionId] = useState<string | null>(null);
-  const [userInfo, setUserInfo] = useState({ name: '', email: '', phone: '' });
+  const [userInfo, setUserInfo] = useState<UserInfo>({ name: '', email: '', phone: '' });
   const [userInfoSubmitted, setUserInfoSubmitted] = useState(false);
-  const [chatHistory, setChatHistory] = useState<any[]>([]);
+  const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement | null>(null);
 
-  // Generate or load session ID
   useEffect(() => {
     let storedSessionId = localStorage.getItem('sessionId');
     if (!storedSessionId) {
@@ -22,7 +32,6 @@ export default function Chatbot() {
     setSessionId(storedSessionId);
   }, []);
 
-  // Scroll to bottom on new message
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatHistory]);
@@ -34,15 +43,11 @@ export default function Chatbot() {
       return;
     }
 
-    // Send user info to backend
-    const res = await fetch(
-      'https://aiginno-agentic.onrender.com/webhook-test/user',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...userInfo, session_id: sessionId }),
-      }
-    );
+    const res = await fetch('https://aiginno-agentic.onrender.com/webhook-test/user', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ...userInfo, session_id: sessionId }),
+    });
 
     if (res.ok) {
       setUserInfoSubmitted(true);
@@ -54,32 +59,37 @@ export default function Chatbot() {
 
   const handleSendMessage = async () => {
     if (!input.trim()) return;
+
     const question = input.trim();
     setChatHistory((prev) => [...prev, { role: 'user', message: question }]);
     setInput('');
     setLoading(true);
 
-    const res = await fetch(
-      'https://aiginno-agentic.onrender.com/webhook-test/ai-chat',
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, session_id: sessionId }),
-      }
-    );
+    const res = await fetch('https://aiginno-agentic.onrender.com/webhook-test/ai-chat', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ question, session_id: sessionId }),
+    });
 
     if (res.ok) {
       const data = await res.json();
       setChatHistory((prev) => [
         ...prev,
-        { role: 'bot', message: data.answer || 'Sorry, I couldn’t understand that.' },
+        {
+          role: 'bot',
+          message: data.answer || 'Sorry, I couldn’t understand that.',
+        },
       ]);
     } else {
       setChatHistory((prev) => [
         ...prev,
-        { role: 'bot', message: '❌ Something went wrong while processing your question.' },
+        {
+          role: 'bot',
+          message: '❌ Something went wrong while processing your question.',
+        },
       ]);
     }
+
     setLoading(false);
   };
 
@@ -132,8 +142,7 @@ export default function Chatbot() {
                 className={`max-w-[75%] px-4 py-3 rounded-bubble shadow-bubble text-base whitespace-pre-line break-words transition
                   ${chat.role === 'user'
                     ? 'ml-auto bg-primary text-white rounded-tr-none'
-                    : 'mr-auto bg-background text-text-primary border border-border rounded-tl-none'}
-                `}
+                    : 'mr-auto bg-background text-text-primary border border-border rounded-tl-none'}`}
                 style={{ alignSelf: chat.role === 'user' ? 'flex-end' : 'flex-start' }}
                 aria-live={chat.role === 'bot' ? 'polite' : undefined}
               >
@@ -143,14 +152,19 @@ export default function Chatbot() {
             <div ref={chatEndRef} />
           </div>
 
-          <form className="flex gap-2" onSubmit={e => { e.preventDefault(); handleSendMessage(); }}>
+          <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <input
               type="text"
               className="flex-grow border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
               placeholder="Ask anything about our real estate listings..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSendMessage())}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
               disabled={loading}
               aria-label="Chat input"
             />
