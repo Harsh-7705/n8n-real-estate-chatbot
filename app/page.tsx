@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { v4 as uuidv4 } from 'uuid';
+import ReactMarkdown from 'react-markdown';
 
 type ChatMessage = {
   role: 'user' | 'bot';
@@ -146,7 +147,17 @@ export default function Chatbot() {
                 style={{ alignSelf: chat.role === 'user' ? 'flex-end' : 'flex-start' }}
                 aria-live={chat.role === 'bot' ? 'polite' : undefined}
               >
-               <span style={{ whiteSpace: 'pre-wrap' }}>{chat.message}</span>
+              // <span style={{ whiteSpace: 'pre-wrap' }}>{chat.message}</span>
+               <div
+                  key={idx}
+                  className="mr-auto bg-background text-text-primary border border-border rounded-bubble rounded-tl-none shadow-bubble px-4 py-3 max-w-[75%]"
+                  style={{ alignSelf: 'flex-start' }}
+                >
+                  <div className="prose prose-sm max-w-full text-text-primary">
+                    <ReactMarkdown>{chat.message}</ReactMarkdown>
+                  </div>
+                </div>
+
               </div>
             ))}
             <div ref={chatEndRef} />
