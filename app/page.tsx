@@ -146,7 +146,7 @@ export default function Chatbot() {
                 style={{ alignSelf: chat.role === 'user' ? 'flex-end' : 'flex-start' }}
                 aria-live={chat.role === 'bot' ? 'polite' : undefined}
               >
-                {chat.message}
+               <span style={{ whiteSpace: 'pre-wrap' }}>{chat.message}</span>
               </div>
             ))}
             <div ref={chatEndRef} />
