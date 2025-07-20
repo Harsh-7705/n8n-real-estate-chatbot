@@ -397,6 +397,11 @@ import { v4 as uuidv4 } from 'uuid';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 
+// Utility to convert "\n" to actual line breaks
+const preprocessMarkdown = (text: string) => {
+  return text.replace(/\\n/g, '\n');
+};
+
 type ChatMessage = {
   role: 'user' | 'bot';
   message: string;
@@ -406,11 +411,6 @@ type UserInfo = {
   name: string;
   email: string;
   phone: string;
-};
-
-// ✅ Fix: Convert literal "\n" strings into real line breaks
-const preprocessMarkdown = (text: string) => {
-  return text.replace(/\\n/g, '\n');
 };
 
 export default function Chatbot() {
@@ -493,62 +493,72 @@ export default function Chatbot() {
   };
 
   return (
-    <div className="max-w-xl mx-auto p-4 flex flex-col h-screen bg-background text-text-primary">
+    <div className="max-w-xl mx-auto p-4 flex flex-col h-screen bg-background text-text-primary dark:bg-gray-900 dark:text-white">
       <h1 className="text-3xl font-bold mb-4 text-primary">🏡 Real Estate AI Chatbot</h1>
 
       {!userInfoSubmitted ? (
-        <form onSubmit={handleUserInfoSubmit} className="space-y-4 bg-surface p-6 rounded-xl shadow-bubble border border-border">
+        <form onSubmit={handleUserInfoSubmit} className="space-y-4 bg-surface p-6 rounded-xl shadow border">
           <input
             type="text"
             placeholder="Your Name"
-            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full border p-3 rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             value={userInfo.name}
             onChange={(e) => setUserInfo({ ...userInfo, name: e.target.value })}
             required
-            aria-label="Your Name"
           />
           <input
             type="email"
             placeholder="Email"
-            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full border p-3 rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             value={userInfo.email}
             onChange={(e) => setUserInfo({ ...userInfo, email: e.target.value })}
             required
-            aria-label="Email"
           />
           <input
             type="tel"
             placeholder="Phone Number"
-            className="w-full border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+            className="w-full border p-3 rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
             value={userInfo.phone}
             onChange={(e) => setUserInfo({ ...userInfo, phone: e.target.value })}
             required
-            aria-label="Phone Number"
           />
-          <button
-            type="submit"
-            className="bg-primary text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition disabled:bg-border"
-          >
+          <button type="submit" className="bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90">
             Submit
           </button>
         </form>
       ) : (
         <>
-          {/* ✅ FIXED HEIGHT CHAT WINDOW */}
-          <div className="mb-4 border border-border rounded-xl p-4 bg-surface shadow-bubble flex flex-col gap-2 overflow-y-auto" style={{ height: '400px' }}>
+          <div className="mb-4 border rounded-xl p-4 bg-surface shadow flex flex-col gap-2 overflow-y-auto" style={{ height: '400px' }}>
             {chatHistory.map((chat, idx) => (
               <div
                 key={idx}
-                className={`max-w-[75%] px-4 py-3 rounded-bubble shadow-bubble text-base break-words transition
+                className={`max-w-[75%] px-4 py-3 rounded-xl shadow text-base break-words transition whitespace-pre-wrap
                   ${chat.role === 'user'
-                    ? 'ml-auto bg-primary text-white rounded-tr-none'
-                    : 'mr-auto bg-background text-text-primary border border-border rounded-tl-none'}`}
+                    ? 'ml-auto bg-primary text-white'
+                    : 'mr-auto bg-background text-text-primary border'}
+                `}
                 style={{ alignSelf: chat.role === 'user' ? 'flex-end' : 'flex-start' }}
                 aria-live={chat.role === 'bot' ? 'polite' : undefined}
               >
                 {chat.role === 'bot' ? (
-                  <div className="text-sm leading-relaxed whitespace-pre-wrap space-y-2">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                  <div className="text-sm leading-relaxed space-y-2">
+                    <ReactMarkdown
+                      remarkPlugins={[remarkGfm]}
+                      components={{
+                        a: ({ href, children }) => (
+                          <a
+                            href={href || '#'}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-block mt-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                          >
+                            🔗 {children}
+                          </a>
+                        ),
+                        ul: ({ children }) => <ul className="list-disc list-inside">{children}</ul>,
+                        li: ({ children }) => <li className="my-1">{children}</li>,
+                      }}
+                    >
                       {preprocessMarkdown(chat.message)}
                     </ReactMarkdown>
                   </div>
@@ -563,7 +573,7 @@ export default function Chatbot() {
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); handleSendMessage(); }}>
             <input
               type="text"
-              className="flex-grow border border-border p-3 rounded-lg bg-background text-text-primary focus:outline-none focus:ring-2 focus:ring-primary transition"
+              className="flex-grow border p-3 rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-primary"
               placeholder="Ask anything about our real estate listings..."
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -574,13 +584,11 @@ export default function Chatbot() {
                 }
               }}
               disabled={loading}
-              aria-label="Chat input"
             />
             <button
               type="submit"
-              className="bg-primary text-white px-6 py-3 rounded-lg font-semibold shadow hover:bg-primary/90 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 transition disabled:bg-border"
+              className="bg-primary text-white px-6 py-3 rounded-lg font-semibold hover:bg-primary/90"
               disabled={loading}
-              aria-label="Send message"
             >
               {loading ? '...' : 'Send'}
             </button>
